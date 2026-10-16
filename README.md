@@ -19,22 +19,45 @@ See [the detailed architecture and training guide](docs/TRAINING_ARCHITECTURE.md
 
 ## Evaluation results
 
-Test-set metrics from the completed training pipeline:
+### Test-set object detection
 
-| Metric | Result |
+The post-training pipeline evaluates `best.pt` on the constructed FASDD_CV + D-Fire test split.
+The preparation audit recorded **3,532 test images**. This is the pipeline's holdout, rather than the untouched official D-Fire test split or a separate external benchmark.
+
+Evaluation settings: **imgsz=640, conf=0.001, iou=0.6, split=test**.
+
+| Metric | Test-set result |
 |---|---:|
-| mAP@0.50 | 68.39% |
-| mAP@0.50:0.95 | 41.83% |
-| Precision / Recall | 73.66% / 58.96% |
-| Fire / Smoke AP@0.50 | 69.50% / 67.28% |
+| mAP@0.50 | **68.39%** |
+| mAP@0.50:0.95 | **41.83%** |
+| Fire AP@0.50 | **69.50%** |
+| Smoke AP@0.50 | **67.28%** |
+| Precision | **73.66%** |
+| Recall | **58.96%** |
 
-The constructed test split contains 3,532 images according to the preparation audit.
-Separately, the historical **validation image-trigger** results at confidence 0.25 are
-**0.482% negative-image triggers** and **96.044% positive-image triggers** (2,490 negative / 1,087 positive images).
-These trigger rates are not object recall or camera-level alarm rates.
+These values come from the saved final model card. The evaluation cell uses `split=test` before model-card generation.
+The raw evaluator report and split manifest have not been rechecked here. Evaluator precision and recall are not measurements at the later video confidence of 0.25.
 
-See [the evaluation report](docs/EVALUATION.md) for settings, evidence, and measurement limits.
-These are recorded results; no new evaluation was run for this update.
+### Validation image-trigger results
+
+The validation split contains **2,490 negative images** and **1,087 positive images**, totaling **3,577**.
+
+| Confidence threshold | Negative-image trigger rate | Positive-image trigger rate |
+|---|---:|---:|
+| 0.10 | 0.763% | 97.884% |
+| 0.25 | **0.482%** | **96.044%** |
+
+A trigger means any detection in an image, without checking class or bounding-box IoU.
+Positive-image trigger rate is not object recall; negative-image trigger rate is not false alarms per camera per day.
+
+The saved calibration recommends **0.10** for its target of at most 1% negative-image triggers.
+The published demo videos use **0.25**. The 0.25 row is a historical recorded result, not a newly recomputed measurement.
+
+### Interpretation
+
+These detection and trigger results use different metrics and data splits. They do not establish superiority over YOLOv8 standard or the upstream author's model; that requires evaluation on the same labeled split with the same protocol.
+
+See [the detailed evaluation report](docs/EVALUATION.md). No new evaluation was run for this documentation update.
 
 ## Video examples
 
