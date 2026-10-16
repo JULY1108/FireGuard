@@ -1,403 +1,180 @@
-# نقشهٔ راه FireGuard V2 — سه مدل، سه فلسفهٔ متفاوت
+# FireGuard: Training Record and Next Steps
 
-تاریخ: ۲۰۲۶-۰۹-۰۳ · وضعیت: پیشنهاد، هنوز تأیید نشده
+Updated: 2026-10-16
 
----
+This document describes the training workflow and saved results for this repository's **fireguard_s_local_v1** model. It is based on the local training entry point, dataset audit, stage configurations, training logs, final model card, and recorded video inference runs.
 
-# بخش ۱ — بررسی صادقانهٔ چیزی که الان داریم
+## 1. Model and artifacts
 
-## ۱-۱ نقاط قوتِ واقعی
+- Base checkpoint: **yolo26s.pt**, pretrained for COCO detection.
+- Target classes: **0 = fire**, **1 = smoke**.
+- Fine-tuning: adapt the detection head to two classes and train the full network; no layers are frozen.
+- Saved model used for video inference: `checkpoints/fireguard_s_local_v1/final/best.pt`.
+- Saved artifacts also include `best.onnx` and `model_card.json`.
+- The checkpoint and datasets are stored separately from the public source repository.
 
-اینها را دور نمی‌ریزیم؛ ستون فقرات V2 هستند.
+The saved stage configurations contain Linux server paths. The checkpoint folder was subsequently copied into the local project. These historical paths must be adjusted when reproducing a run on another machine.
 
-| # | چیست | چرا ارزشمند است |
-|---|---|---|
-| S1 | **ماشین وضعیت با تأیید زمانی و هیسترزیس** (`HazardEngine`) | این تنها بخشی از پروژه است که واقعاً «مهندسی ایمنی» است، نه «صدا زدنِ مدل». الگوی `confirm_hits/clear_frames` درست است و مستقیم به V2 منتقل می‌شود. |
-| S2 | **جداسازی تمیزِ لایه‌ها** | `detect` / `HazardEngine` / `draw_overlay` / `process_video` واقعاً مستقل‌اند. می‌شود مدل را عوض کرد بدون دست‌زدن به منطق. این یعنی V2 نیاز به بازنویسی از صفر ندارد. |
-| S3 | **`normalize_class`** — ایدهٔ نگاشتِ برچسبِ هر دیتاست به `fire/smoke` | باعث می‌شود هر چک‌پوینتِ غریبه‌ای پلاگ‌این شود. (ایده درست، پیاده‌سازی باگ دارد — W7) |
-| S4 | **پروفایل‌ها** (`standard` / `fire-only` / `early-smoke`) | همان الگوی `config/*.yaml` در `security_core`. درست فکر شده: یک محصول، چند بازارِ متفاوت. |
-| S5 | **مستندسازیِ رویداد** — `events.csv` + اسنپ‌شاتِ شواهد | این چیزی است که «دمو» را به «محصول» تبدیل می‌کند. مشتری برای همین پول می‌دهد، نه برای کادرِ قرمز. |
-| S6 | **کیفیتِ ارائه** | HUD، براکت، ناحیهٔ ایمنی، تایم‌لاین، README دوزبانه، دکمهٔ Colab. برای «پوینت مثبت در یک پروژهٔ بزرگ» این نصفِ کار است. |
-| S7 | **بنچمارک سه‌مدلی و `frame_skip`** | فکرِ «بودجهٔ محاسباتی» از قبل هست. در V2 همین فکر به یک زمان‌بندِ واقعی تبدیل می‌شود. |
+## 2. Dataset preparation
 
-## ۱-۲ ضعف‌ها — به‌ترتیبِ خطر
+The pipeline combines **FASDD_CV** and **D-Fire**.
 
-### دستهٔ A — خطرِ وجودی (اگر حل نشوند، محصول فروش نمی‌رود)
+1. Download and extract the source datasets.
+2. Preserve FASDD class IDs and swap D-Fire class IDs to match fire=0 and smoke=1.
+3. Audit images and labels; isolate invalid annotations and clip boxes that cross image boundaries.
+4. Remove perceptually similar images using dHash, with Hamming distance threshold 3.
+5. Build approximate event groups using threshold 12, then assign groups to train, validation, and test splits.
+6. Apply training augmentation after splitting.
 
-| # | ضعف | شواهد | اثر |
-|---|---|---|---|
-| **W1** | **هیچ ارزیابی‌ای وجود ندارد.** نه mAP، نه precision/recall، نه نرخ آلارمِ کاذب. | خودِ README اعتراف می‌کند: *«accuracy numbers are not yet benchmarked»*. `benchmark.csv` فقط سرعت را می‌سنجد. | نمی‌دانیم مدل خوب است یا بد. هیچ ادعای فروشی قابل دفاع نیست. **این ضعفِ شمارهٔ یک است.** |
-| **W2** | **وزن‌های ناشناخته.** هر سه چک‌پوینت از ریپوهای شخصیِ HF می‌آیند: `SalahALHaismawi/…`، `rabahdev/…`، `leeyunjai/…` | `MODEL_REGISTRY` در `fireguard_core.py:73` | دیتاستِ آموزش، لایسنس، و آلودگیِ آزمون‌شان نامعلوم است. برای پروژهٔ دولتی/تجاری پذیرفتنی نیست. |
-| **W3** | **لایسنس AGPL-3.0.** کل خط‌لوله روی `ultralytics` سوار است. | `requirements.txt:1` | AGPL یعنی: یا **کلِ** کدِ محصول را عمومی کن، یا لایسنس تجاری بخر. برای «محصولِ قابل فروش» این یک بمبِ ساعتی است. |
-| **W4** | **کورشدن در برابر منفی‌های سخت.** هیچ مکانیزمی برای ردِ غروبِ آفتاب، چراغ‌ترمز، جلیقهٔ نارنجی، بخارِ کتری، ابر و مه وجود ندارد. | تصمیم فقط از روی `conf > 0.30` گرفته می‌شود | در دنیای واقعی این تنها چیزی است که مشتری می‌شمارد: «شبی چند بار الکی زنگ می‌زند؟» |
+The preparation audit recorded:
 
-### دستهٔ B — باگ‌های واقعی در کد
+| Item | Images |
+|---|---:|
+| Source images | 116,653 |
+| After isolating invalid labels | 116,627 |
+| After perceptual deduplication | 66,785 |
+| Training split | 59,676 |
+| Validation split | 3,577 |
+| Test split | 3,532 |
 
-| # | باگ | محل | توضیح |
-|---|---|---|---|
-| **W5** | **`alert_cooldown_s` اصلاً کار نمی‌کند.** متغیر `repeat` محاسبه می‌شود ولی **در dict خروجی برنمی‌گردد**؛ در `process_video` هم فقط `info["changed"]` خوانده می‌شود. | `fireguard_core.py:262-278` | «ضدِ اسپم» که README تبلیغ می‌کند، کدِ مرده است. |
-| **W6** | **زمانِ دیوار به‌جای زمانِ ویدیو.** `HazardEngine` از `time.time()` استفاده می‌کند. | `fireguard_core.py:259` | روی CPU با ۷ FPS، هر ۴ ثانیهٔ کول‌داون = ۲۸ فریمِ ویدیو. آهنگِ هشدار به سخت‌افزار وابسته شده. باید `frame_idx / fps` باشد. |
-| **W7** | **`"non-fire"` به‌عنوان `fire` طبقه‌بندی می‌شود.** | `fireguard_core.py:135` — `if "fire" in n` | کلاس‌های `no_fire` / `non_fire` / `fire_extinguisher` همه match می‌شوند. هر مدلی که کلاسِ منفیِ صریح داشته باشد، ۱۰۰٪ آلارمِ کاذب می‌دهد. |
-| **W8** | **`FP16` ادعا شده ولی وجود ندارد.** README می‌گوید «FP16 on GPU» ولی هیچ‌جای کد `half=` نیست. | `grep half` → صفر نتیجه | ~۲ برابر سرعتِ GPU روی میز مانده. |
-| **W9** | **کپیِ کاملِ فریم به‌ازای هر کادرِ آتش.** `_dashed_circle` وقتی `alpha` دارد `img.copy()` می‌زند. | `fireguard_core.py:322` | در 1080p یعنی ~۶MB memcpy + addWeighted برای **هر** کادر، در **هر** فریم. |
-| **W10** | **فیلترِ مساحتِ ثابت.** `min_area = 0.0008 × H × W` → در 1080p یعنی حذفِ هرچیز کوچک‌تر از ~۴۰×۴۰ پیکسل. | `fireguard_core.py:154` | دقیقاً «آتشِ دور» و «دودِ اولیه» را حذف می‌کند — یعنی همان چیزی که کلِ سیستم برایش ساخته شده. |
-| **W11** | **منطقِ «سیگار» خطرناک است.** آتشِ دور، دودِ کوچک تولید می‌کند → `SMOKING` → آلارم تنزل می‌یابد. | `fireguard_core.py:243` | مدل «کوچک» را با «بی‌خطر» یکی گرفته. فاصله مدل نشده. برای یک محصولِ ایمنی این حالتِ شکستِ بدی است. |
-| **W12** | **کدگذاریِ دوباره.** `mp4v` نوشته می‌شود بعد با ffmpeg به H.264 تبدیل می‌شود. | `fireguard_core.py:576` | افتِ کیفیتِ دوباره + زمانِ اضافه. باید مستقیم به ffmpeg پایپ شود. |
+The audit isolated 26 images with invalid labels and clipped 50 boxes in 41 label files.
 
-### دستهٔ C — شکاف‌های معماری
+The requested 80/10/10 allocation applies to **groups**. Unequal group sizes produced image proportions of approximately 89.36/5.36/5.29%. Dataset grouping uses a heuristic and does not guarantee that every related event or near-duplicate was found. Perceptual similarity is also not proof that two images are identical.
 
-| # | شکاف | چرا مهم است |
-|---|---|---|
-| **W13** | **هیچ ردیابی‌ای نیست.** وضعیت، *سراسری و per-frame* است. | نمی‌شود «چند کانونِ آتش» شمرد، نمی‌شود شواهد را روی یک شیء انباشت، نمی‌شود رشدِ یک شعله را دنبال کرد. این دقیقاً برخلافِ معماریِ `security_core` است که همه‌چیز روی `global_id` می‌نشیند. |
-| **W14** | **زندهٔ واقعی نیست.** فقط فایلِ ویدیو. نه RTSP، نه وب‌کم، نه چندین دوربین، نه batch. | هدفِ ثبت‌شده «چند دوربین روی یک GPU» است؛ `process_video` با آن ناسازگار است. |
-| **W15** | **هیچ آزمونی نیست.** `security_core` هم `selftest.py` دارد هم `smoketest_pipeline.py`؛ ماژول آتش صفر. | هر تغییری ریسک است. |
-| **W16** | **آستانه‌ها کالیبره نشده‌اند.** `conf_fire=0.30` برای هر سه مدلِ متفاوت یکسان است. | توزیعِ اطمینانِ هر چک‌پوینت فرق دارد. عددِ ۰.۳۰ برای یکی سخت‌گیر است و برای دیگری ولنگار. |
-| **W17** | **بدون خروجیِ صنعتی.** نه ONNX، نه TensorRT، نه OpenVINO، نه INT8. | ۳ تا ۴ برابر سرعت روی میز مانده. |
+These are historical preparation counts. The datasets are not included in the repository and were later removed from the local test workspace; reproducing training requires preparing them again.
 
-### جمع‌بندیِ بخش ۱
+See [TRAINING_REVIEW.md](TRAINING_REVIEW.md) for the preparation audit.
 
-> کاری که ساخته‌ای یک **پوستهٔ محصولِ عالی** است روی یک **هستهٔ ادراکیِ ناشناخته**.
-> لایهٔ تصمیم، ارائه، و مستندسازی حرفه‌ای است. چیزی که زیرش هست — یک `.pt` غریبه با
-> دقتِ اندازه‌گیری‌نشده — قابل فروش نیست.
-> **V2 دقیقاً همین را برعکس می‌کند: هسته را می‌سازیم و پوسته را نگه می‌داریم.**
+## 3. Completed training and fine-tuning
 
----
+The saved CSV logs and final model card confirm completion of both stages:
 
-# بخش ۲ — انتخابِ مدل (نتیجهٔ سرچ)
+| Stage | Input size | Completed epochs | Initialization |
+|---|---:|---:|---|
+| s1_lo | 512 | 72 | COCO-pretrained YOLO26s |
+| s2_hi | 640 | 48 | Best checkpoint from s1_lo |
+| Total | Progressive 512 to 640 | **120** | Full-network fine-tuning |
 
-## ۲-۱ چشم‌اندازِ آشکارسازها در ۲۰۲۶
+Stage 1 contains a within-stage resume from its own last checkpoint. Stage 2 starts a new training session from the Stage 1 best weights with `resume=False`; it does not continue the previous optimizer and scheduler state.
 
-| خانواده | بهترین نمایندهٔ سبک | AP کوکو | پارامتر | تأخیر T4 | لایسنس |
-|---|---|---|---|---|---|
-| **D-FINE** | N / S / M / X | 42.8 / 48.5 / 52.3 / 55.8 | 4M / 10M / 19M / 62M | 2.12 / 3.49 / 5.62 / 12.89 ms | **Apache-2.0** ✅ |
-| **RF-DETR** | N / S / M / L | 48.4 / 53.0 / 54.7 / 56.5 | ~30M ثابت | 2.3 / 3.5 / 4.4 / 6.8 ms | **Apache-2.0** ✅ (XL/2XL جدا) |
-| **DEIMv2** | Pico / N / S / X | 38.5 / 43.0 / 50.9 / 57.8 | 1.5M / 3.6M / 9.7M / 50.3M | 2.13 / 2.32 / 5.78 / 13.75 ms | ⚠️ لایسنسِ اختصاصی — برای تجاری باید مکاتبه شود |
-| **YOLO26** (Ultralytics) | n / s / l | 40.9 … 57.5 | 2.4M … | 1.7 … 11.8 ms | ❌ **AGPL-3.0** |
+### Saved training settings
 
-**دو نتیجهٔ کلیدی:**
+- Automatic batch sizing: `batch=-1`.
+- Optimizer selection: `optimizer=auto`.
+- Configured `lr0=0.001`, `lrf=0.01`, cosine learning-rate scheduling, and 3 warm-up epochs.
+- Early-stopping patience: 40.
+- Automatic mixed precision enabled.
+- Training data-loader workers: 0.
+- Training seed in saved stage configurations: 0. Dataset grouping uses seed 1337.
+- Mosaic probability: 1.0; mosaic closes for the last 15 epochs.
+- MixUp probability: 0.1.
+- Rotation: 5 degrees; translation: 0.1; scale: 0.5; shear: 2 degrees.
+- Horizontal flip probability: 0.5.
 
-1. **RF-DETR-N با ۴۸.۴ AP، از YOLOv11x (50.9 AP) در تأخیرِ خیلی کمتر رد می‌شود** و اولین مدلِ بلادرنگی است که ۶۰+ AP را شکسته (2XL: 60.1). ICLR 2026.
-2. **Apache-2.0 بودن، مهم‌تر از ۱ واحد AP است.** AGPL یعنی یا محصول را باز کن یا پول بده. RF-DETR و D-FINE هر دو بدونِ قید تجاری‌اند.
+Automatic optimizer selection can override the configured initial learning rate. The configured value alone must not be reported as the effective learning rate throughout training.
 
-> **پیشنهادِ راهبردی:** ستونِ فقرات را از Ultralytics به **RF-DETR + D-FINE** منتقل کن.
-> Ultralytics را به‌عنوان یک backend اختیاریِ «پژوهش/مقایسه» نگه دار، نه مسیرِ محصول.
-> ابزارِ یکپارچه‌سازی: **LibreYOLO** (MIT) که هر دو خانواده را زیر یک API می‌آورد و
-> خروجی ONNX/TensorRT/OpenVINO/NCNN/TFLite با INT8/FP16 و LoRA/distillation دارد.
+### CCTV augmentation
 
-## ۲-۲ دیتاست‌ها
+Both saved stage configurations include:
 
-| دیتاست | حجم | چه چیزِ منحصربه‌فردی دارد | لایسنس |
-|---|---|---|---|
-| **D-Fire** | 21,527 تصویر | **۹,۸۳۸ تصویرِ منفیِ سخت** — غروب، انعکاس، چراغ، لباسِ قرمز. کلیدِ کاهشِ آلارمِ کاذب. | آزاد (پژوهشی) |
-| **FASDD** | ۱۰۰,۰۰۰+ | سه زیرمجموعه: دوربینِ ثابت / پهپاد / ماهواره. شب و روز، داخل و بیرون. | باز |
-| **Pyro-SDIS** | 33,636 (28,103 دودی) | تصویرِ **دوربین‌های واقعیِ مستقر** آتش‌نشانیِ فرانسه — نه تصویرِ اینترنتی. | باز (HF) |
-| **FIgLib** | ~20,000 | **دنباله‌های زمانی** — تنها دیتاستی که ساختارِ زمانی دارد. برای TC3 و سرِ زمانی ضروری. | پژوهشی |
-| **DetectiumFire** | 14.5k تصویر + 2.5k ویدیو | کپشن + **تاکسونومیِ سطحِ خطر** (No/Low/Moderate/High Risk) | ⚠️ **CC BY-NC-SA** — فقط ارزیابی، نه محصول |
-| **FLAME / FLAME2** | پهپاد | جفتِ RGB + مادون‌قرمز | پژوهشی |
+| Augmentation | Probability | Settings |
+|---|---:|---|
+| JPEG compression | 0.30 | Quality 30-80 |
+| Downscaling | 0.20 | Scale 0.35-0.85 |
+| Grayscale | 0.12 | Three output channels |
+| Motion blur | 0.10 | Kernel range 3-5 |
+| Brightness and contrast | 0.20 | Limits ±0.25 |
+| CLAHE | 0.02 | Clip limit 1-4 |
 
-**اعدادِ مرجع برای هدف‌گذاری:** روی D-Fire، مدل‌های فشرده معمولاً mAP@50 حدود **۰.۶۲ تا ۰.۸۰** می‌گیرند (YOLOv8n خام: ۰.۶۲۵). SmokeyNet روی FIgLib: دقت ۰.۸۳ / F1 ۰.۸۲ — **هم‌سطحِ انسان**.
+The two-epoch smoke test is a pipeline check and is not the final trained model. The ablation option is disabled by default; no completed ablation study is claimed here.
 
----
+## 4. Saved evaluation records
 
-# بخش ۳ — سه مدل، سه فلسفه
+### Final model-card detection metrics
 
-اصلِ طراحی: **هر سه یک ورودیِ مشترک، یک باسِ شواهدِ مشترک و یک اسکیمای رویدادِ مشترک دارند**،
-پس قابلِ تعویضِ زنده‌اند. اما **پارادایمِ استنتاجشان کاملاً متفاوت است** — نه صرفاً سه سایزِ یک مدل.
+The final model card records the following bounding-box metrics:
 
-```
-                    ورودیِ مشترک: TC3
-                          │
-     ┌────────────────────┼────────────────────┐
-     ▼                    ▼                    ▼
-  SPARK                 BLAZE               INFERNO
- «یک نگاه»          «نگاه + فیزیک»      «شورای متخصصان»
- تک‌فریم،            ردیابی + تأییدِ        آبشار + قاضیِ
- دروازهٔ حرکت        فیزیکیِ شعله         معناییِ VLM
-     │                    │                    │
-     └────────────────────┼────────────────────┘
-                          ▼
-              باسِ شواهد (log-odds روی fire_id)
-                          ▼
-                 وضعیت / آلارم / پرونده
-```
+| Metric | Value |
+|---|---:|
+| mAP@0.50 | 68.39% |
+| mAP@0.50:0.95 | 41.83% |
+| Fire AP@0.50 | 69.50% |
+| Smoke AP@0.50 | 67.28% |
+| Precision | 73.66% |
+| Recall | 58.96% |
 
----
+These values are transcribed from the saved model card, not recomputed for this document. The metrics block does not label its evaluation split, so these values should not be presented as a newly verified independent test benchmark without the original evaluation report.
 
-## 🟢 مدل ۱ — **SPARK** · «سریع، سبک، بی‌ادعا»
+### Validation threshold calibration
 
-**برای:** پوینتِ مثبت در پروژهٔ بزرگ · سخت‌افزارِ ارزان · Jetson Orin Nano، RPi5، مینی‌PC
-**پیام:** «یک دوربین، یک برد ۱۵۰ دلاری، ۳۰ فریم بر ثانیه، بدون GPU سرور.»
+The model card explicitly identifies the calibration split as **validation**:
 
-### ستون فقرات
-`D-FINE-N` (۴M پارامتر، Apache-2.0) برای CPU، یا `RF-DETR-N` اگر هدف Jetson است.
-ورودی `imgsz = 512`. خروجی: ONNX → OpenVINO INT8 (CPU) / TensorRT FP16 (Jetson).
+| Item | Value |
+|---|---:|
+| Negative images | 2,490 |
+| Positive images | 1,087 |
+| Recommended confidence | 0.10 |
+| Negative-image trigger rate | 0.763% |
+| Positive-image trigger rate | 97.884% |
+| Target negative-image trigger rate | At most 1% |
 
-### ★ نوآوریِ ۱ — ورودیِ **TC3** (Temporal-Chroma Composite)
+A trigger means **any detection in an image**, without matching class or bounding-box IoU. Positive-image trigger rate is therefore not object recall. Negative-image trigger rate is not false alarms per camera per day.
 
-به‌جای دادنِ RGB، سه کانالی می‌سازیم که *خودشان* شواهدِ آتش‌اند:
+The later demo videos use confidence **0.25**, so their operating point differs from this calibration.
 
-| کانال | چیست | چه چیزی را حل می‌کند |
-|---|---|---|
-| **Ch0 — ساختار** | خاکستریِ فریمِ جاری | همان اطلاعاتِ شکل و لبه |
-| **Ch1 — انرژیِ زمانی** | `\|I_t − I_{t−k}\|` با k تطبیقی، نرمال‌شده | پرچمِ قرمز تکان می‌خورد ولی **بافتش عوض نمی‌شود**؛ شعله بافتش در هر فریم نو می‌شود. غروبِ آفتاب انرژیِ زمانیِ صفر دارد. |
-| **Ch2 — پیشینِ رنگی** | قاعدهٔ YCbCr: `Cr − Cb` برای شعله + `S/V` پایین برای دود | یک پیشینِ تحلیلیِ رایگان که شبکه لازم نیست از صفر یاد بگیرد |
+## 5. Recorded video inference
 
-این دقیقاً همان ایده‌ای است که در مقالهٔ *Spatio-Temporal Data Model for Early Wildfire Detection* (Fire, 2026)
-اعتبارسنجی شده: **کدگذاریِ اطلاعاتِ زمانی در کانال‌های اضافیِ تصویر، بدون هیچ تغییری در معماریِ شبکه**.
-هزینه: ~۰.۳ ms روی CPU. سود: شبکه شواهدِ حرکت را مجانی می‌گیرد، پس **backboneِ کوچک‌تر همان دقت را می‌دهد**.
+All three published demo runs use the saved `fireguard_s_local_v1/final/best.pt` checkpoint.
 
-### ★ نوآوریِ ۲ — **زمان‌بندِ دروازه‌ایِ حرکت** (Motion-Gated Scheduler)
+| Video | Inference size | Confidence | Deduplication IoU | Containment threshold |
+|---|---:|---:|---:|---:|
+| demo_3 | 768 | 0.25 | 0.30 | 0.90 |
+| demo_4 | 768 | 0.25 | 0.30 | 0.90 |
+| demo_5 | 960 | 0.25 | 0.30 | 0.90 |
 
-همان فکرِ «بودجهٔ محاسباتی» ماژول چهره، اینجا:
+Inference size 960 is a later inference setting, not the training resolution. For rectangular video, letterboxing scales the image according to the requested size and model stride; it does not stretch every frame into a 960-by-960 square.
 
-```
-اگر (انرژیِ زمانیِ صحنه < آستانه) و (N فریمِ اخیر SAFE بوده):
-        نرخِ استنتاج → ۱/۴
-اگر انرژی جهش کرد یا هر کاندیدی دیده شد:
-        نرخِ استنتاج → کامل، فوراً
+The post-processing suppresses overlapping or contained detections of the same class while retaining detections from different classes. Its effect on object recall needs labeled data; cleaner overlays alone do not establish improved detection quality.
+
+The demo_5 overlay displays processing FPS over a rolling window of 30 frame intervals. It includes decoding, inference, drawing, and writes to the encoder input, but excludes the final encoder drain. It is not a model-only GPU latency benchmark.
+
+See [before/after videos and run settings](docs/videos/tests/README.md). Published videos are 720p viewing copies; their upload resolution does not indicate the model's inference size. The videos have no complete frame-level ground truth and do not establish accuracy or comparative superiority over YOLOv8.
+
+## 6. Reproduction entry point
+
+Use [train_local.py](train_local.py) and [TRAINING_LOCAL.md](TRAINING_LOCAL.md):
+
+```powershell
+.\.venv\Scripts\python.exe train_local.py --check
+.\.venv\Scripts\python.exe -u train_local.py --phase prepare
+.\.venv\Scripts\python.exe -u train_local.py --phase all
 ```
 
-هزینهٔ دروازه: ~۰.۲ ms. سودِ آن روی یک راهروی خالی: **۳ تا ۵ برابر توانِ عبوری**.
-این دقیقاً همان چیزی است که «چند دوربین روی یک GPU» را واقعی می‌کند — چون
-در هر لحظه فقط دوربین‌هایی که **چیزی در آنها می‌گذرد** محاسبه می‌خورند.
+The preparation phase includes data checks, a smoke test, and baseline timing. The full phase runs the configured workflow and can reuse or resume existing work.
 
-### اهدافِ قابل سنجش
+The pipeline originally writes final artifacts under:
 
-| معیار | هدف |
-|---|---|
-| mAP@50 روی D-Fire (test) | ≥ ۰.۷۰ |
-| FPS روی Jetson Orin Nano، TensorRT FP16 | ≥ ۶۰ |
-| FPS روی CPU دسکتاپ، OpenVINO INT8 | ≥ ۲۵ |
-| آلارمِ کاذب / دوربین / ۲۴ ساعت | ≤ ۳ |
-| حجمِ مدل | ≤ ۱۵ MB |
-
----
-
-## 🟠 مدل ۲ — **BLAZE** · «سریع، دقیق، و قابلِ دفاع»
-
-**برای:** استقرارِ تجاری، ۸ تا ۱۲ دوربین روی یک RTX 3060 / T4 / Orin NX
-**پیام:** «فقط نمی‌گوید آتش هست — می‌گوید **چرا** مطمئن است.»
-
-### ستون فقرات
-`RF-DETR-S` یا `-M` (۵۳.۰ / ۵۴.۷ AP، Apache-2.0) روی ورودیِ TC3، `imgsz` ۵۱۲–۵۷۶.
-\+ ردیابِ `BoT-SORT` با تیونی که در ماژول چهره یاد گرفتیم
-(`match_thresh` آستانهٔ **فاصله** است نه شباهت — درسِ V7 مستقیم اینجا کاربرد دارد).
-
-### ★ نوآوریِ ۳ — **تأییدکنندهٔ فیزیکیِ سوسو** (Flicker-DFT Verifier)
-
-این جواهرِ BLAZE است. آشکارسازهای شعلهٔ صنعتیِ گواهی‌دار (IR flame detector) دهه‌هاست
-روی یک اصلِ فیزیکی کار می‌کنند: **شعلهٔ واقعی در باندِ ~۱ تا ۱۳ هرتز سوسو می‌زند.**
-هیچ خط‌لولهٔ YOLOیِ متن‌بازی این را استفاده نکرده.
-
-برای هر track:
-1. حلقه‌ای از ۶۴ فریمِ اخیرِ میانگینِ شدت/کرومایِ ROI نگه‌دار
-2. FFT بگیر
-3. `E_flicker` = انرژیِ نرمال‌شده در باندِ ۲–۱۲ Hz
-
-| سوژه | امضای طیفی |
-|---|---|
-| شعلهٔ واقعی | انرژیِ **پهن‌باند** و قوی در ۲–۱۲ Hz |
-| غروبِ آفتاب / مخروطِ نارنجی / لباس | ~صفر |
-| مانیتور/تلویزیونی که آتش نشان می‌دهد | قله‌های **باریک** در آلیاسِ ۵۰/۶۰ Hz |
-| چراغِ گردانِ آمبولانس | قلهٔ باریکِ تک‌فرکانس |
-
-هزینه: **~۰.۰۵ ms به‌ازای هر track**. عملاً رایگان، و دقیقاً همان کلاسِ خطاهایی را
-می‌کُشد که مدلِ پیکسلی هرگز نمی‌تواند.
-
-### ★ نوآوریِ ۴ — **تأییدکنندهٔ رشدِ ستونِ دود** (Plume-Growth Verifier)
-
-دودِ واقعی سه امضای سینماتیکِ اجباری دارد که ابر و مه ندارند:
-1. **مساحت به‌طور یکنوا رشد می‌کند** (نرخِ رشد را روی ۳–۵ ثانیه فیت می‌کنیم)
-2. **مرکزِ ثقل بالا می‌رود** (شناوری) یا با باد در یک جهتِ ثابت می‌رود
-3. **کدری از یک نقطهٔ لنگر پخش می‌شود** — یک منشأ دارد، برخلافِ مهِ سراسری
-
-این پرکاربردترین آلارمِ کاذبِ دود را در ریشه می‌زند.
-
-### ★ نوآوریِ ۵ — **باسِ شواهد به‌صورت log-odds روی `fire_id`**
-
-دقیقاً همان معماریِ `security_core`، اما برای آتش:
-
-```
-belief(fire_id) = Σ  w_i(کیفیت) · log-odds( شاهدِ i )
-                  i
-
-شواهد:  آشکارساز · سوسوی طیفی · رشدِ ستون · پایداریِ زمانی · هم‌خوانیِ رنگ
-وزن:    با اندازهٔ کادر، تیزی، فاصلهٔ برآوردی مقیاس می‌شود
-محو:    شواهدِ قدیمی نمایی محو می‌شوند → سیستم هرگز در تصمیمِ غلط قفل نمی‌ماند
+```text
+outputs/training/checkpoints/fireguard_s_local_v1/final/
 ```
 
-نتیجه: اطمینانِ **کالیبره** و **قابلِ توضیح**. گزارشِ رویداد این‌طور می‌شود:
+The model currently used by the video runs is the copied checkpoint under:
 
-> `🚨 DANGER · cam_03 · 14:22:07 · اطمینان ۰.۹۱`
-> `آشکارساز ۰.۷۱ | سوسو ۸.۴Hz قوی (+۱.۲) | رشدِ ستون ۱۸۰٪/ثانیه (+۰.۸) | پایدار ۲.۳ ثانیه (+۰.۶)`
-
-این خطِ متن، تفاوتِ «دمو» و «محصول» است.
-
-### اهدافِ قابل سنجش
-
-| معیار | هدف |
-|---|---|
-| mAP@50 روی D-Fire + FASDD | ≥ ۰.۸۰ |
-| آلارمِ کاذب / دوربین / ۲۴ ساعت | ≤ ۰.۵ |
-| زمانِ تشخیص (از شعله‌ورشدن تا آلارم) | ≤ ۳ ثانیه |
-| دوربینِ همزمان روی یک RTX 3060 @ ۱۲ FPS | ≥ ۸ |
-
----
-
-## 🔴 مدل ۳ — **INFERNO** · «بی‌نظیر»
-
-**برای:** سایتِ بحرانی، پرونده‌سازیِ حقوقی، و **معلمِ دو مدلِ دیگر**
-**پیام:** «چیزی را می‌بیند که هیچ‌کس نمی‌بیند، و وقتی مطمئن نیست، می‌گوید مطمئن نیستم.»
-بودجهٔ تأخیر: ۱۰۰ تا ۳۰۰ میلی‌ثانیه — بلادرنگ نیست، و لازم هم نیست باشد.
-
-### آبشارِ شش‌مرحله‌ای
-
-**A · اسکنِ چندرزولوشنی (SAHI).**
-یک پاسِ تمام‌فریم + کاشی‌های هم‌پوشانِ رزولوشنِ اصلی. ستونِ دودِ ۲۰ پیکسلیِ دوردست در
-تغییرِ اندازهٔ 4K→640 نابود می‌شود؛ در کاشیِ بومی نمی‌شود.
-اعتبارسنجی: YOLO-SIFD گزارش می‌دهد **+۲۵٪ بهبود در mAP@50-95**.
-
-**B · گروهِ آشکارسازهای ناهمگن + WBF.**
-`RF-DETR-L` (ترنسفورمر) ⊕ `D-FINE-X` (CNN-hybrid) ⊕ یک **متخصصِ دود** آموزش‌دیده روی
-Pyro-SDIS و FIgLib. با Weighted Box Fusion ادغام می‌شوند.
-معماری‌های ناهمگن **به‌شکلِ متفاوتی شکست می‌خورند** — پس:
-- **اجتماعشان** = بیشینه فراخوانی (حالتِ «هیچ آتشی از دست نرود»)
-- **اشتراکشان** = بیشینه دقت (حالتِ «هرگز الکی زنگ نزن»)
-هر دو به‌عنوان دو نقطهٔ کاریِ قابلِ انتخاب عرضه می‌شوند.
-
-**C · سرِ زمانیِ سبک (به‌سبکِ SmokeyNet).**
-امبدینگِ کاشی‌ها از backboneِ خودِ آشکارساز → LSTM (زمان) → ViT کوچک (زمینهٔ فضایی روی کاشی‌ها).
-SmokeyNet روی FIgLib به دقتِ ۰.۸۳ و F1 ۰.۸۲ رسید — **هم‌سطحِ انسان**.
-نوآوریِ ما: به‌جای آموزشِ CNN از صفر، از ویژگی‌های آشکارساز استفاده می‌کنیم → تقریباً رایگان.
-
-**D · ★ قاضیِ معناییِ VLM.**
-هر کاندیدِ آلارم (ROI + نوارِ ۳ فریمیِ زمینه) به `SigLIP-2` می‌رود با یک **بانکِ پرامپتِ
-تقابلی** که مخصوصِ منفی‌های سختِ همین سایت ساخته شده:
-
-```
-مثبت : «شعلهٔ باز»، «ستونِ دودِ برخاسته از آتش»، «موادِ در حالِ سوختن»
-منفی : «غروبِ آفتاب از پنجره»، «مخروطِ ترافیکیِ نارنجی»، «چراغِ ترمزِ خودرو»،
-        «بخارِ کتری»، «گردوغبارِ برخاسته از ماشین»، «صفحهٔ نمایشی که آتش نشان می‌دهد»،
-        «جوشکاری»، «مه صبحگاهی»، «جلیقهٔ ایمنیِ نارنجی»
+```text
+checkpoints/fireguard_s_local_v1/final/
 ```
 
-فقط روی کاندیداهای آلارم اجرا می‌شود → ۱ تا ۳ فراخوانی در دقیقه → هزینهٔ عملاً صفر.
-FireCLIP نشان داده prompt tuning حداقل **۱۲.۴۵٪** بهبود در حالتِ zero-shot می‌دهد.
-خروجیِ جانبیِ طلایی: **یک جملهٔ قابلِ خواندنِ انسانی** برای گزارش رویداد.
+The historical preparation review predates the completed server training. Use the saved stage logs and final model card for completed-epoch information.
 
-**E · ★ قطعه‌بندی + اندازه‌گیریِ فیزیکی.**
-`RF-DETR-Seg` ماسکِ آتش را می‌دهد → مساحت به پیکسل → با کالیبراسیونِ دوربین، به متر مربع.
-سپس مشتقِ زمانیِ آن:
-- **نرخِ گسترش** (m²/دقیقه)
-- **پیش‌بینیِ زمان تا آستانهٔ بحرانی**
-- **جهتِ گسترش** نسبت به مناطقِ حساسِ تعریف‌شده (`zones.py` از قبل در `security_core` هست)
+## 7. Next steps
 
-اینجا سیستم از «تشخیص» به **«هوشِ موقعیتی»** جهش می‌کند. هیچ دموی رقیبی این را ندارد.
+These tasks are proposed and are not claimed as completed:
 
-**F · ★ عدمِ قطعیت و **حقِ سکوت**.**
-MC-Dropout + TTA (ensemble روی flip/scale) → واریانسِ پیش‌بینی → اطمینانِ کالیبره.
-سه باند به‌جای دو تا:
+1. **Preserve evaluation provenance.** Keep dataset manifests, split identities, checkpoint hashes, package versions, hardware details, and full evaluation reports together.
+2. **Run an independent comparison.** Evaluate FireGuard and YOLOv8 standard on the same labeled holdout, with class mapping, image size, thresholds, and post-processing documented. Check overlap with training data before calling a dataset independent.
+3. **Measure the resolution trade-off.** Compare 640, 768, and 960 on the same frames and hardware, reporting per-class precision, recall, mAP, model latency, and total processing FPS.
+4. **Validate deduplication.** Compare predictions before and after suppression against labeled small flames and overlapping smoke regions.
+5. **Evaluate long videos.** Measure missed incidents, detection delay, and false alarms over negative footage before selecting temporal alert rules.
+6. **Validate deployment exports.** A saved ONNX artifact exists, but export availability alone does not establish output equivalence or deployment speed. Check numerical agreement and benchmark the intended runtime before deployment.
 
-| باند | رفتار |
-|---|---|
-| `CONFIRMED` | آلارم |
-| `ABSTAIN` | **به اپراتور ارجاع** + قابِ شواهد + دلیلِ VLM |
-| `REJECTED` | ثبت در لاگ، بی‌صدا |
-
-مقالهٔ *Uncertainty-Aware Post-Detection* نشان داد این کار روی D-Fire دقتِ YOLOv8n را
-از ۰.۷۱۲ به **۰.۸۴۵** می‌برد. باندِ «سکوت» چیزی است که یک محصولِ ایمنیِ **قابلِ گواهی** لازم دارد.
-
-### ★★ نوآوریِ نهایی — **INFERNO معلم است، نه فقط مدل**
-
-```
-INFERNO روی ویدیوی بایگانیِ سایت (شبانه، آفلاین) اجرا می‌شود
-        │
-        ├─ هر ABSTAIN  ────────────┐
-        ├─ هر اختلافِ VLM با آشکارساز ─┤──►  استخرِ منفیِ سختِ مخصوصِ همین سایت
-        └─ هر کشفِ INFERNO که SPARK از دست داد ─┘
-                                        │
-                        تقطیر (distillation) هفتگی
-                                        ▼
-                        SPARK و BLAZE به‌روزرسانی می‌شوند
-```
-
-یعنی: **سیستم هرچه بیشتر نصب بماند، دقیق‌تر می‌شود — بدون هیچ برچسب‌زنیِ دستی.**
-زیرساختش از قبل در `security_core` هست: `snapshot.harvest_all_for_dataset` در
-`accurate.yaml` و `scripts/autolabel_and_distill.py`. فقط باید به آتش وصل شود.
-
-این تنها جمله‌ای است که در ارائه لازم داری:
-> «مدلِ بزرگِ ما فقط اجرا نمی‌شود — مدل‌های کوچک را آموزش می‌دهد.»
-
-### اهدافِ قابل سنجش
-
-| معیار | هدف |
-|---|---|
-| mAP@50 روی D-Fire + FASDD + Pyro-SDIS | ≥ ۰.۸۸ |
-| F1 روی FIgLib (دنبالهٔ زمانی) | ≥ ۰.۸۵ (فراتر از SmokeyNet) |
-| آلارمِ کاذب / دوربین / ۲۴ ساعت | ≤ ۰.۰۵ |
-| کمترین ستونِ دودِ قابلِ تشخیص | ≤ ۲۰×۲۰ پیکسل در 4K |
-| نرخِ ABSTAIN | ≤ ۲٪ فریم‌های کاندید |
-
----
-
-## ۳-۱ جدولِ مقایسه
-
-| | 🟢 SPARK | 🟠 BLAZE | 🔴 INFERNO |
-|---|---|---|---|
-| **پارادایم** | تک‌فریم + دروازهٔ حرکت | ردیابی + تأییدِ فیزیکی | آبشارِ گروهی + قاضیِ معنایی |
-| **ستون فقرات** | D-FINE-N / RF-DETR-N | RF-DETR-S/M | RF-DETR-L ⊕ D-FINE-X ⊕ متخصصِ دود |
-| **پارامتر** | ~۴M | ~۳۰M | ~۱۲۰M+ |
-| **سخت‌افزار** | RPi5 / Orin Nano / CPU | RTX 3060 / T4 / Orin NX | A10 / 4090 / سرور |
-| **تأخیر** | ۵–۲۰ ms | ۲۰–۶۰ ms | ۱۰۰–۳۰۰ ms |
-| **نوآوریِ امضا** | TC3 + زمان‌بندِ دروازه‌ای | سوسوی DFT + رشدِ ستون + log-odds | VLM قاضی + گسترشِ فیزیکی + حقِ سکوت |
-| **FAR هدف** | ≤ ۳/روز | ≤ ۰.۵/روز | ≤ ۰.۰۵/روز |
-| **کاربرد** | پوینتِ مثبت، edge | استقرارِ تجاری | سایتِ بحرانی + معلم |
-
----
-
-# بخش ۴ — فازبندیِ اجرا
-
-| فاز | چه می‌سازیم | معیارِ «تمام شد» |
-|---|---|---|
-| **۰ · حقیقت‌سنجی** | مهارِ ارزیابی: D-Fire + مجموعهٔ منفیِ تخاصمی؛ سنجشِ **همین سه چک‌پوینتِ فعلی** | برای اولین بار عددِ واقعیِ mAP/FAR داریم. رفعِ W5–W12. |
-| **۱ · داده و ورودی** | لولهٔ TC3 + یکسان‌سازیِ D-Fire/FASDD/Pyro-SDIS/FIgLib | آزمونِ A/B: TC3 در برابر RGB روی همان backbone |
-| **۲ · SPARK** | آموزش D-FINE-N، خروجی ONNX/TensorRT/OpenVINO، زمان‌بندِ دروازه‌ای | عبور از جدولِ اهدافِ SPARK روی سخت‌افزارِ واقعی |
-| **۳ · BLAZE** | ردیاب + سوسوی DFT + رشدِ ستون + باسِ log-odds | FAR ≤ ۰.۵/روز روی ۷۲ ساعت ویدیوی واقعی |
-| **۴ · INFERNO** | SAHI + گروه + سرِ زمانی + قاضیِ VLM + قطعه‌بندی + سکوت | عبور از جدولِ اهدافِ INFERNO |
-| **۵ · حلقهٔ معلم** | تقطیرِ INFERNO → SPARK/BLAZE، بسته‌بندی، پاک‌سازیِ لایسنس | یک چرخهٔ کاملِ خودبهبودی روی داده‌ی واقعی |
-
-هر فاز، مثلِ ماژول چهره: تغییرات نام‌دار (H1، H2، …)، جدولِ قبل/بعد، و هزینهٔ میکروثانیه‌ایِ اندازه‌گیری‌شده.
-
----
-
-# بخش ۵ — معیارهایی که واقعاً مهم‌اند
-
-mAP برای مقاله خوب است. مشتری این‌ها را می‌خرد:
-
-| معیار | تعریف | چرا |
-|---|---|---|
-| **FAR** | آلارمِ کاذب / دوربین / ۲۴ ساعت | تنها عددی که مشتری واقعاً می‌شمارد |
-| **TTD** | ثانیه از شعله‌ورشدن تا آلارم | تفاوتِ «سطلِ آب» و «ساختمانِ سوخته» |
-| **Miss@FAR** | نرخِ آتشِ ازدست‌رفته در FAR ثابت | تنها مقایسهٔ منصفانه بین دو سیستم |
-| **مجموعهٔ تخاصمی** | غروب، چراغِ ترمز، جلیقه، بخار، مه، جوشکاری، صفحهٔ نمایش | باید یک مجموعهٔ نگه‌داری‌شده باشد که هر build روی آن اجرا شود |
-| **دوربین/GPU** | در FPS و FAR هدف | مستقیماً قیمتِ تمام‌شده را تعیین می‌کند |
-
----
-
-# منابع
-
-- RF-DETR (ICLR 2026) — https://arxiv.org/pdf/2511.09554 · https://rfdetr.roboflow.com/latest/
-- D-FINE — https://github.com/Peterande/D-FINE
-- DEIMv2 «Real-Time Object Detection Meets DINOv3» — https://arxiv.org/pdf/2509.20787
-- YOLO26 — https://docs.ultralytics.com/models/yolo26
-- لایسنس — https://blog.roboflow.com/rf-detr-is-free-to-use-commercially/ · https://www.ultralytics.com/license
-- D-Fire — https://github.com/gaia-solutions-on-demand/DFireDataset
-- FASDD — https://essd.copernicus.org/preprints/essd-2023-73/
-- Pyro-SDIS — https://huggingface.co/datasets/pyronear/pyro-sdis
-- FIgLib و SmokeyNet — https://arxiv.org/pdf/2112.08598
-- DetectiumFire — https://arxiv.org/html/2511.02495v1
-- مدلِ دادهٔ فضا-زمانی (کانال‌های اضافی) — https://doi.org/10.3390/fire9040175
-- YOLO-SIFD (SAHI) — https://www.sciencedirect.com/org/science/article/pii/S1546221825002255
-- FireCLIP — https://doi.org/10.3390/fire8060237
-- عدمِ قطعیتِ پس از تشخیص — https://arxiv.org/pdf/2510.10108
-- SAHI — https://github.com/obss/SAHI
+No new training, dataset evaluation, or deployment benchmark was run while writing this document.

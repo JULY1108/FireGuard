@@ -74,7 +74,7 @@ flowchart TD
 a camera glitch, or headlights. The state machine only escalates on a *confirmed* run of frames, and only
 emails when that confirmed tier is worse than the last one *or* confidence has climbed meaningfully since
 the last email — so a smoke alert is always followed up if the same incident turns into fire (no silent
-gap), but a flicker never spams the inbox. Details and the full roadmap (edge/commercial/server tiers) are
+gap), but a flicker never spams the inbox. The local training record and next steps are
 in [`PLAN_V2.md`](PLAN_V2.md).
 
 ---
@@ -199,13 +199,13 @@ so borderline detections still show up in the logs/overlay without flooding the 
 
 ## Where this is going
 
-Three tiers sharing one evidence bus, detailed in [`PLAN_V2.md`](PLAN_V2.md):
+The completed local training workflow and next steps are documented in
+[`PLAN_V2.md`](PLAN_V2.md):
 
-- **SPARK** — edge tier (RPi5 / Jetson Orin Nano), motion-gated inference
-- **BLAZE** — commercial tier: tracking + a flame-flicker DFT verifier (real flames oscillate at 2–12 Hz;
-  sunsets and traffic cones do not) + plume-growth verification, fused as log-odds per tracked fire
-- **INFERNO** — server tier: multi-resolution ensemble, VLM adjudication, abstention, and distillation
-  back into the smaller two
+- YOLO26s full-network fine-tuning: 72 epochs at 512, followed by 48 epochs at 640.
+- Saved model-card metrics and validation threshold calibration, with their measurement limits.
+- Video inference at 768 and 960, with class-aware detection deduplication.
+- Planned independent evaluation, resolution comparisons, and deployment checks.
 
 ---
 
@@ -220,7 +220,7 @@ fireguard_core.py             ← v0.1 inference engine: hazard state machine + 
 FireGuard.ipynb               ← v0.1 inference demo
 docs/videos/                  ← smoke- and fire-alert email demos
 docs/images/                  ← detection samples used in this README
-PLAN_V2.md                    ← three-tier architecture
+PLAN_V2.md                    ← local training record and next steps
 DATA_AND_MODELS.md            ← model and dataset selection, with reasoning
 DATASET_AUDIT.md              ← measured dataset facts and the eight traps
 legacy/                       ← superseded two-notebook version
