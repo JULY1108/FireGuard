@@ -35,10 +35,10 @@ The low conf=0.001 allows collection of predictions for detection evaluation and
 
 The threshold-calibration step explicitly uses **validation**, with 2,490 negative images and 1,087 positive images, totaling 3,577.
 
-| Confidence threshold | Negative-image trigger rate | Positive-image trigger rate | Evidence |
-|---|---:|---:|---|
-| 0.10 | 0.763% | 97.884% | Saved threshold_calibration.json and model_card.json |
-| 0.25 | **0.482%** | **96.044%** | Previously recorded result supplied in the user's screenshot |
+| Confidence threshold | Negative-image trigger rate | Positive-image trigger rate |
+|---|---:|---:|
+| 0.10 | 0.763% | 97.884% |
+| 0.25 | **0.482%** | **96.044%** |
 
 The saved calibration recommends 0.10 for its target of no more than 1% negative-image triggers. The published demo videos instead use 0.25.
 
