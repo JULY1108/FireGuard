@@ -1,3 +1,5 @@
+> **本地模型测试视频（检测前后）**：[查看 demo_3、demo_4、demo_5 完整对比](docs/videos/tests/README.md)。上传副本为 720p；各视频实际推理输入尺寸与参数见对比页。
+
 # 🔥 FireGuard
 
 **Fire & smoke detection for indoor CCTV — one notebook from raw datasets to a deployable model.**

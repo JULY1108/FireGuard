@@ -51,3 +51,6 @@ weights/
 .env.*
 !.env.example
 .github-upload/
+
+# Published before/after video previews
+!docs/videos/tests/*.mp4
