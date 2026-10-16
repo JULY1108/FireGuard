@@ -56,8 +56,15 @@ Datasets, intermediate checkpoints, the Python environment, and generated traini
 
 ## Attribution and license
 
-This project adapts training and inference code from
-[ParsaVictor/FireGuuard_Fire_detection_smoke](https://github.com/ParsaVictor/FireGuuard_Fire_detection_smoke),
-with local training fixes, model fine-tuning, detection deduplication, and video inference changes.
+This project incorporates code from
+[ParsaVictor/FireGuuard_Fire_detection_smoke](https://github.com/ParsaVictor/FireGuuard_Fire_detection_smoke).
+Its original MIT copyright and permission notice are retained in [LICENSE](LICENSE).
 
-The original copyright and [MIT license](LICENSE) are retained. Dataset licenses and terms apply separately.
+**The retained MIT notice is not a blanket license for the trained weights or dependencies.**
+Ultralytics states that its software and YOLO trained/fine-tuned models are covered by AGPL-3.0 by default,
+with a separate Enterprise License option. This also concerns the included YOLO26-derived best.pt;
+the upstream FireGuard MIT notice does not override those model terms.
+
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the applicable sources and scope.
+Datasets and source footage retain their respective rights and terms.
+No Enterprise License is granted or claimed, and this clarification does not independently relicense the entire repository.

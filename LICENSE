@@ -22,8 +22,17 @@ SOFTWARE.
 
 ---
 
-Third-party model weights (downloaded at runtime from Hugging Face) remain
-under their respective licenses:
-- rabahdev/fire-smoke-yolov8n
-- leeyunjai/yolo11-firedetect
-- SalahALHaismawi/yolov26-fire-detection
+Scope and third-party components
+
+The MIT notice above is retained from the upstream FireGuard project for
+code originally distributed under that notice. It is not a blanket MIT
+grant for Ultralytics, YOLO26 pretrained or fine-tuned weights, datasets,
+or third-party video footage.
+
+Ultralytics publishes its software and YOLO trained/fine-tuned models under
+AGPL-3.0 by default and offers a separate Enterprise License. The included
+checkpoints/fireguard_s_local_v1/final/best.pt is derived from yolo26s.pt;
+this MIT notice does not override the applicable upstream model terms.
+
+This clarification does not relicense the entire repository or grant an
+Enterprise License. See THIRD_PARTY_NOTICES.md for sources and scope.
