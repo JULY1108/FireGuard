@@ -10,72 +10,21 @@
 ![YOLO](https://img.shields.io/badge/detector-YOLO26-8A2BE2)
 ![Status](https://img.shields.io/badge/status-v0.2%20training%20pipeline-orange)
 
-> **Status — v0.2.** The training pipeline is complete and tested, and the trained detector is running
-> live inference with email alerts (see [Results](#results)). v0.1 shipped an inference demo on
-> third-party checkpoints of unknown provenance — v0.2 replaces those with a model trained on
-> documented, licensed data.
->
-> 🇮🇷 [خلاصهٔ فارسی](#فارسی) در انتهای فایل.
+> **Local run:** YOLO26s fine-tuned for fire and smoke over 120 epochs (512 → 640).
+> Recorded video inference uses the saved best checkpoint at input sizes 768 and 960.
+> See [training records](PLAN_V2.md) and [before/after videos](docs/videos/tests/README.md).
 
 ---
 
-## See it catch a fire before it spreads
+## Local workflow
 
-| 💨 Confirmed smoke → alert email in seconds | 🔥 Fire escalation → follow-up alert, same thread |
-|---|---|
-| [▶ Watch the smoke-alert demo](docs/videos/01_smoke_alert_email_demo.mp4) | [▶ Watch the fire-alert demo](docs/videos/02_fire_alert_email_demo.mp4) |
+1. Prepare FASDD_CV and D-Fire: align classes, audit labels, deduplicate, and split.
+2. Run `train_local.py`: fine-tune YOLO26s for 72 epochs at 512, then 48 epochs at 640.
+3. Load `checkpoints/fireguard_s_local_v1/final/best.pt` for video inference.
+4. Apply class-aware detection deduplication and save annotated videos; demo_5 includes processing FPS.
 
-Both clips show the same run end-to-end: camera feed → confirmed hazard state → an HTML email with the
-evidence frame attached, sent within moments of the confirmed detection. GitHub doesn't autoplay
-repo-hosted video inside a README, so click through to watch — or open either file directly in the
-`docs/videos/` folder.
-
----
-
-## Architecture
-
-One evidence pipeline, two notebooks. `FireGuard_Pipeline.ipynb` builds the model; `FireGuard_Eval.ipynb`
-runs it against video and turns confirmed detections into alerts.
-
-```mermaid
-flowchart TD
-    subgraph DATA["📦 Data — FireGuard_Pipeline.ipynb, §1-5"]
-        A1[FASDD_CV<br/>95,126 imgs] --> M[Merge + fix<br/>opposite class maps]
-        A2[D-Fire<br/>21,527 imgs] --> M
-        M --> D[Dedup: exact-hash<br/>+ near-duplicate pass]
-        D --> S[Group-aware split<br/>train / val / test]
-    end
-
-    subgraph TRAIN["🧠 Train — §6-10"]
-        S --> AU[CCTV augmentation<br/>compression · IR night · motion-blur]
-        AU --> TR[YOLO26 fine-tune<br/>progressive resolution]
-        TR --> EX[Export: PyTorch → ONNX → TensorRT FP16]
-    end
-
-    subgraph INFER["🎥 Inference — FireGuard_Eval.ipynb"]
-        EX --> DET[Per-frame detection<br/>fire / smoke boxes + confidence]
-        DET --> FSM[Hazard state machine<br/>QUIET → SMOKING → WARNING → DANGER → CRITICAL]
-        FSM --> CONF{"confirmed tier change<br/>+ confidence ≥ 50%?"}
-    end
-
-    subgraph ALERT["📧 Alert"]
-        CONF -->|yes| MAIL[Gmail SMTP, background thread<br/>evidence frame inline]
-        MAIL --> THREAD[Same email thread<br/>while confidence keeps climbing]
-        CONF -->|no: below threshold<br/>or no real change| SKIP[Log only, no email]
-    end
-
-    style ALERT fill:#5c1a1a,stroke:#E53935,color:#fff
-    style TRAIN fill:#1a2a3a,stroke:#4a90d9,color:#fff
-    style DATA fill:#1a3a2a,stroke:#4caf7f,color:#fff
-    style INFER fill:#3a2a1a,stroke:#e08a3c,color:#fff
-```
-
-**Why a state machine, not raw per-frame detections:** a single confident frame can be a lighter flame,
-a camera glitch, or headlights. The state machine only escalates on a *confirmed* run of frames, and only
-emails when that confirmed tier is worse than the last one *or* confidence has climbed meaningfully since
-the last email — so a smoke alert is always followed up if the same incident turns into fire (no silent
-gap), but a flicker never spams the inbox. The local training record and next steps are
-in [`PLAN_V2.md`](PLAN_V2.md).
+The published local demo runs do not send email alerts. See [PLAN_V2.md](PLAN_V2.md)
+for saved training results and [test videos](docs/videos/tests/README.md) for inference settings.
 
 ---
 
@@ -120,8 +69,7 @@ Do not hand-edit the notebook — edit `build_pipeline_notebook.py` and regenera
 python build_pipeline_notebook.py
 ```
 
-Once you have weights, **[`FireGuard_Eval.ipynb`](FireGuard_Eval.ipynb)** runs the trained detector on
-video, drives the hazard state machine, and sends the email alerts shown above.
+The upstream [`FireGuard_Eval.ipynb`](FireGuard_Eval.ipynb) includes an optional email-alert workflow. It was not used for the published local video runs.
 
 Both notebooks are written in Persian with an English summary; full **English translations** (same code,
 translated text) live in [`docs/notebooks_en/`](docs/notebooks_en/).
@@ -218,7 +166,7 @@ docs/notebooks_en/            ← English translations of both notebooks (same c
 build_pipeline_notebook.py    ← FireGuard_Pipeline.ipynb's generator (edit this, not the notebook)
 fireguard_core.py             ← v0.1 inference engine: hazard state machine + overlays
 FireGuard.ipynb               ← v0.1 inference demo
-docs/videos/                  ← smoke- and fire-alert email demos
+docs/videos/tests/            ← local before/after inference videos
 docs/images/                  ← detection samples used in this README
 PLAN_V2.md                    ← local training record and next steps
 DATA_AND_MODELS.md            ← model and dataset selection, with reasoning
