@@ -1,0 +1,454 @@
+{
+  "checkpoint": "checkpoints/fireguard_s_local_v1/final/best.pt",
+  "sha256": "2c401218a735076f48c62c2c6e92cea27da5f85b03d4e99d0f564963ff6b4dea",
+  "bytes": 20292286,
+  "ultralytics_inspected": "8.4.138",
+  "parameters": 9949412,
+  "stride": [
+    8.0,
+    16.0,
+    32.0
+  ],
+  "yaml": {
+    "nc": 2,
+    "end2end": true,
+    "reg_max": 1,
+    "scales": {
+      "n": [
+        0.5,
+        0.25,
+        1024
+      ],
+      "s": [
+        0.5,
+        0.5,
+        1024
+      ],
+      "m": [
+        0.5,
+        1.0,
+        512
+      ],
+      "l": [
+        1.0,
+        1.0,
+        512
+      ],
+      "x": [
+        1.0,
+        1.5,
+        512
+      ]
+    },
+    "backbone": [
+      [
+        -1,
+        1,
+        "Conv",
+        [
+          64,
+          3,
+          2
+        ]
+      ],
+      [
+        -1,
+        1,
+        "Conv",
+        [
+          128,
+          3,
+          2
+        ]
+      ],
+      [
+        -1,
+        2,
+        "C3k2",
+        [
+          256,
+          false,
+          0.25
+        ]
+      ],
+      [
+        -1,
+        1,
+        "Conv",
+        [
+          256,
+          3,
+          2
+        ]
+      ],
+      [
+        -1,
+        2,
+        "C3k2",
+        [
+          512,
+          false,
+          0.25
+        ]
+      ],
+      [
+        -1,
+        1,
+        "Conv",
+        [
+          512,
+          3,
+          2
+        ]
+      ],
+      [
+        -1,
+        2,
+        "C3k2",
+        [
+          512,
+          true
+        ]
+      ],
+      [
+        -1,
+        1,
+        "Conv",
+        [
+          1024,
+          3,
+          2
+        ]
+      ],
+      [
+        -1,
+        2,
+        "C3k2",
+        [
+          1024,
+          true
+        ]
+      ],
+      [
+        -1,
+        1,
+        "SPPF",
+        [
+          1024,
+          5,
+          3,
+          true
+        ]
+      ],
+      [
+        -1,
+        2,
+        "C2PSA",
+        [
+          1024
+        ]
+      ]
+    ],
+    "head": [
+      [
+        -1,
+        1,
+        "nn.Upsample",
+        [
+          "None",
+          2,
+          "nearest"
+        ]
+      ],
+      [
+        [
+          -1,
+          6
+        ],
+        1,
+        "Concat",
+        [
+          1
+        ]
+      ],
+      [
+        -1,
+        2,
+        "C3k2",
+        [
+          512,
+          true
+        ]
+      ],
+      [
+        -1,
+        1,
+        "nn.Upsample",
+        [
+          "None",
+          2,
+          "nearest"
+        ]
+      ],
+      [
+        [
+          -1,
+          4
+        ],
+        1,
+        "Concat",
+        [
+          1
+        ]
+      ],
+      [
+        -1,
+        2,
+        "C3k2",
+        [
+          256,
+          true
+        ]
+      ],
+      [
+        -1,
+        1,
+        "Conv",
+        [
+          256,
+          3,
+          2
+        ]
+      ],
+      [
+        [
+          -1,
+          13
+        ],
+        1,
+        "Concat",
+        [
+          1
+        ]
+      ],
+      [
+        -1,
+        2,
+        "C3k2",
+        [
+          512,
+          true
+        ]
+      ],
+      [
+        -1,
+        1,
+        "Conv",
+        [
+          512,
+          3,
+          2
+        ]
+      ],
+      [
+        [
+          -1,
+          10
+        ],
+        1,
+        "Concat",
+        [
+          1
+        ]
+      ],
+      [
+        -1,
+        1,
+        "C3k2",
+        [
+          1024,
+          true,
+          0.5,
+          true
+        ]
+      ],
+      [
+        [
+          16,
+          19,
+          22
+        ],
+        1,
+        "Detect",
+        [
+          "nc"
+        ]
+      ]
+    ],
+    "scale": "s",
+    "yaml_file": "yolo26s.yaml",
+    "channels": 3
+  },
+  "modules": [
+    {
+      "index": 0,
+      "from": -1,
+      "type": "Conv",
+      "parameters": 928
+    },
+    {
+      "index": 1,
+      "from": -1,
+      "type": "Conv",
+      "parameters": 18560
+    },
+    {
+      "index": 2,
+      "from": -1,
+      "type": "C3k2",
+      "parameters": 26080
+    },
+    {
+      "index": 3,
+      "from": -1,
+      "type": "Conv",
+      "parameters": 147712
+    },
+    {
+      "index": 4,
+      "from": -1,
+      "type": "C3k2",
+      "parameters": 103360
+    },
+    {
+      "index": 5,
+      "from": -1,
+      "type": "Conv",
+      "parameters": 590336
+    },
+    {
+      "index": 6,
+      "from": -1,
+      "type": "C3k2",
+      "parameters": 346112
+    },
+    {
+      "index": 7,
+      "from": -1,
+      "type": "Conv",
+      "parameters": 1180672
+    },
+    {
+      "index": 8,
+      "from": -1,
+      "type": "C3k2",
+      "parameters": 1380352
+    },
+    {
+      "index": 9,
+      "from": -1,
+      "type": "SPPF",
+      "parameters": 656896
+    },
+    {
+      "index": 10,
+      "from": -1,
+      "type": "C2PSA",
+      "parameters": 990976
+    },
+    {
+      "index": 11,
+      "from": -1,
+      "type": "Upsample",
+      "parameters": 0
+    },
+    {
+      "index": 12,
+      "from": [
+        -1,
+        6
+      ],
+      "type": "Concat",
+      "parameters": 0
+    },
+    {
+      "index": 13,
+      "from": -1,
+      "type": "C3k2",
+      "parameters": 477184
+    },
+    {
+      "index": 14,
+      "from": -1,
+      "type": "Upsample",
+      "parameters": 0
+    },
+    {
+      "index": 15,
+      "from": [
+        -1,
+        4
+      ],
+      "type": "Concat",
+      "parameters": 0
+    },
+    {
+      "index": 16,
+      "from": -1,
+      "type": "C3k2",
+      "parameters": 136192
+    },
+    {
+      "index": 17,
+      "from": -1,
+      "type": "Conv",
+      "parameters": 147712
+    },
+    {
+      "index": 18,
+      "from": [
+        -1,
+        13
+      ],
+      "type": "Concat",
+      "parameters": 0
+    },
+    {
+      "index": 19,
+      "from": -1,
+      "type": "C3k2",
+      "parameters": 378880
+    },
+    {
+      "index": 20,
+      "from": -1,
+      "type": "Conv",
+      "parameters": 590336
+    },
+    {
+      "index": 21,
+      "from": [
+        -1,
+        10
+      ],
+      "type": "Concat",
+      "parameters": 0
+    },
+    {
+      "index": 22,
+      "from": -1,
+      "type": "C3k2",
+      "parameters": 1843712
+    },
+    {
+      "index": 23,
+      "from": [
+        16,
+        19,
+        22
+      ],
+      "type": "Detect",
+      "parameters": 933412
+    }
+  ]
+}

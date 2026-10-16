@@ -54,3 +54,12 @@ weights/
 
 # Published before/after video previews
 !docs/videos/tests/*.mp4
+
+# Published final inference checkpoint
+!checkpoints/
+checkpoints/*
+!checkpoints/fireguard_s_local_v1/
+checkpoints/fireguard_s_local_v1/*
+!checkpoints/fireguard_s_local_v1/final/
+checkpoints/fireguard_s_local_v1/final/*
+!checkpoints/fireguard_s_local_v1/final/best.pt

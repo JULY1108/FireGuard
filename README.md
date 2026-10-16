@@ -8,10 +8,14 @@ Fire and smoke detection using a fine-tuned YOLO26s model.
 - Classes: `0 = fire`, `1 = smoke`.
 - Data: FASDD_CV and D-Fire, with class alignment, label auditing, perceptual deduplication, and group-based splitting.
 - Full-network fine-tuning: **72 epochs at 512**, then **48 epochs at 640**.
-- Current checkpoint: `checkpoints/fireguard_s_local_v1/final/best.pt`.
-- Final artifacts also include an ONNX export and a model card, stored separately from the source repository.
+- Download trained weights: [best.pt](checkpoints/fireguard_s_local_v1/final/best.pt) (20.3 MB).
+- The PyTorch checkpoint is included in this repository; the ONNX export remains stored separately.
 
 See [training records, saved metrics, and next steps](PLAN_V2.md). Metrics are recorded results; their evaluation and calibration limits are explained there.
+
+## Network architecture and fine-tuning
+
+See [the detailed architecture and training guide](docs/TRAINING_ARCHITECTURE.md) for backbone/neck/head structure, multi-scale features, end-to-end prediction, the 512 → 640 schedule, optimizer settings, augmentation, and checkpoint verification.
 
 ## Video examples
 
@@ -33,7 +37,7 @@ Create the Python environment and install the dependencies described in [TRAININ
 
 The entry point executes and adapts cells from `FireGuard_Pipeline.ipynb`; that notebook remains a required dependency. `build_pipeline_notebook.py` is its source generator. The local runner applies corrections described in the training review.
 
-Datasets, checkpoints, the Python environment, and generated training outputs are not included in the public source repository.
+Datasets, intermediate checkpoints, the Python environment, and generated training outputs are not included in the public source repository. The final best.pt checkpoint is included.
 
 ## Repository
 

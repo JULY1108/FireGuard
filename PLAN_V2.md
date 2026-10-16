@@ -11,7 +11,8 @@ This document describes the training workflow and saved results for this reposit
 - Fine-tuning: adapt the detection head to two classes and train the full network; no layers are frozen.
 - Saved model used for video inference: `checkpoints/fireguard_s_local_v1/final/best.pt`.
 - Saved artifacts also include `best.onnx` and `model_card.json`.
-- The checkpoint and datasets are stored separately from the public source repository.
+- The final [best.pt checkpoint](checkpoints/fireguard_s_local_v1/final/best.pt) is included in the repository. Datasets and intermediate checkpoints are stored separately.
+- See [network architecture and fine-tuning details](docs/TRAINING_ARCHITECTURE.md) for the actual backbone, fusion layers, detection head, and saved hyperparameters.
 
 The saved stage configurations contain Linux server paths. The checkpoint folder was subsequently copied into the local project. These historical paths must be adjusted when reproducing a run on another machine.
 
