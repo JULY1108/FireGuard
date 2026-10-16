@@ -91,9 +91,9 @@ The two-epoch smoke test is a pipeline check and is not the final trained model.
 
 ## 4. Saved evaluation records
 
-### Final model-card detection metrics
+### Test-set detection metrics
 
-The final model card records the following bounding-box metrics:
+The post-training pipeline evaluates the model on the constructed **test split** using imgsz=640, conf=0.001, and iou=0.6. The final model card records the resulting bounding-box metrics:
 
 | Metric | Value |
 |---|---:|
@@ -104,7 +104,7 @@ The final model card records the following bounding-box metrics:
 | Precision | 73.66% |
 | Recall | 58.96% |
 
-These values are transcribed from the saved model card, not recomputed for this document. The metrics block does not label its evaluation split, so these values should not be presented as a newly verified independent test benchmark without the original evaluation report.
+These values are transcribed from the saved model card. The evaluation cell explicitly uses split='test', and the local runner retains that call before generating the model card. The preparation audit recorded 3,532 test images from the merged datasets. This is the pipeline's constructed holdout, not a separate external benchmark. The raw evaluator report and split manifest have not been recovered or rechecked here. See [evaluation results and evidence](docs/EVALUATION.md).
 
 ### Validation threshold calibration
 
@@ -121,7 +121,9 @@ The model card explicitly identifies the calibration split as **validation**:
 
 A trigger means **any detection in an image**, without matching class or bounding-box IoU. Positive-image trigger rate is therefore not object recall. Negative-image trigger rate is not false alarms per camera per day.
 
-The later demo videos use confidence **0.25**, so their operating point differs from this calibration.
+At confidence **0.25**, the previously recorded validation results supplied in the user's screenshot are **0.482% negative-image trigger rate** and **96.044% positive-image trigger rate**, on the same 2,490 negative and 1,087 positive images. These are image-trigger metrics, not test-set object recall. The raw per-image 0.25 predictions are not available here for recomputation.
+
+The later demo videos use confidence **0.25**, so their operating point differs from the saved 0.10 calibration. See [the evaluation report](docs/EVALUATION.md).
 
 ## 5. Recorded video inference
 

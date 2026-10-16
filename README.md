@@ -17,6 +17,25 @@ See [training records, saved metrics, and next steps](PLAN_V2.md). Metrics are r
 
 See [the detailed architecture and training guide](docs/TRAINING_ARCHITECTURE.md) for backbone/neck/head structure, multi-scale features, end-to-end prediction, the 512 → 640 schedule, optimizer settings, augmentation, and checkpoint verification.
 
+## Evaluation results
+
+Test-set metrics from the completed training pipeline:
+
+| Metric | Result |
+|---|---:|
+| mAP@0.50 | 68.39% |
+| mAP@0.50:0.95 | 41.83% |
+| Precision / Recall | 73.66% / 58.96% |
+| Fire / Smoke AP@0.50 | 69.50% / 67.28% |
+
+The constructed test split contains 3,532 images according to the preparation audit.
+Separately, the historical **validation image-trigger** results at confidence 0.25 are
+**0.482% negative-image triggers** and **96.044% positive-image triggers** (2,490 negative / 1,087 positive images).
+These trigger rates are not object recall or camera-level alarm rates.
+
+See [the evaluation report](docs/EVALUATION.md) for settings, evidence, and measurement limits.
+These are recorded results; no new evaluation was run for this update.
+
 ## Video examples
 
 [Watch demo_3, demo_4, and demo_5 before and after detection](docs/videos/tests/README.md).
