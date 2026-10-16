@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Pipeline outputs (regenerated on every run)
+outputs/
+
+# Cached model weights (auto-downloaded from Hugging Face)
+models/
+
+# Large source / personal files not part of the public repo
+test_raw_output_5.mp4
+Fire_demo.ipynb
+yolov8-fire-smoke-detection.zip
+PUBLISH.md
+.freebuff/
+
+# OS / editor noise
+.DehydratedDigits
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+
+# Scratch files
+*.png.tmp
+
+# --- added 2026-09-04 ---
+# Scratch renders from ad-hoc runs (regenerated, not deliverables)
+sample_*.png
+smoketest_*.png
+render_*.png
+
+# Local dataset samples: third-party images kept only as a working aid
+dataset_samples/
+
+# Agent/editor state
+.mimosa/
+
+# Local data and secrets
+checkpoints/
+weights/
+*.pt
+*.mp4
+*.zip
+.env
+.env.*
+!.env.example
+.github-upload/
